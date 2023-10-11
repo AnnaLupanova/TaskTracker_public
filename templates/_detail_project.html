@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="section_details_content">
+    {% if project %}
+
+    {% for category,msg in get_flashed_messages(True) %}
+    <div class="flash {{category}}">{{msg}}</div>
+    {% endfor %}
+
+    <div class="content_details">
+        <div class="details_project">
+            <div class="row">
+                <p class="title__">Name:</p>
+                <p class="title__value">{{project.name}}</p>
+            </div>
+            <div class="row">
+                <p class="title__">Description:</p>
+                <p class="title__value">{{project.description}}</p>
+            </div>
+
+
+        </div>
+        <div class="buttons_section">
+            <a href="/projects/update/{{project.id}}" class="btn">
+                edit
+            </a>
+
+            <button type="button" class="btn delete" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                Delete
+            </button>
+            <a class="btn " href="/projects">Go back</a>
+        </div>
+
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <h4>Are you sure you want to delete "{{project.name}}"?</h4>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">NO</button>
+                        <a class="btn delete" href="/projects/delete/{{project.id}}">Yes</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if form %}
+        <!-- Modal -->
+        {% if show_modal == True %}
+        <div class="modal fade show" id="exampleModal" tabindex="-1">
+        <!--    <div class="modal fade show" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">-->
+        {% else %}
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            {% endif %}
+
+
+<!--        <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModal" aria-hidden="true">-->
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fs-5">Editing</h5>
+                    </div>
+                    <div class="modal-body">
+
+                        {% from "_formhelpers.html" import render_field %}
+                        <form class="add_form" method="POST" action="/projects/update/{{project.id}}" enctype="multipart/form-data">
+                            {{ form.hidden_tag()}}
+
+                            <div class="mb-3">
+                                {{ render_field(form.name) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ render_field(form.description) }}
+                            </div>
+                            <div class="mb-3">
+                                {{form.submit(class_="btn btn-primary")}}
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+<!--                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>-->
+                        <a href="/projects/edit/{{project.id}}" class="btn" id="closeModal">Close</a>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+
+    </div>
+
+
+    {% endif %}
+
+</div>
+
+
+{% endblock %}
