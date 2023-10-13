@@ -1,42 +1,28 @@
-from flask import Flask, render_template, url_for, request, g, redirect, flash, make_response, session
-from flask_migrate import Migrate
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-import os
-from flask_uploads import UploadSet, configure_uploads, IMAGES, patch_request_class
+from flask import render_template, url_for, request, redirect, flash, session, Blueprint
+from flask_login import login_user, login_required, logout_user, current_user
 from random import randint
 from werkzeug.security import generate_password_hash, check_password_hash
-from UserLogin import UserLogin
-from forms import AddUser, AddTasks, AddProject, photos, editUser
+from app.main.UserLogin import UserLogin
+from app.main.forms import AddUser, AddProject, photos, editUser, AddTasks
 from datetime import timedelta
+from app.main.models import db, Users, Tasks, Projects, AllowedLinks, Statuses, Priorities,TaskUserLink
+from app import login_manager
+from sqlalchemy import or_, and_
+
 
 SESSION_KEEPALIVE = timedelta(seconds=30)
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-
-app = Flask(__name__)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['SQLALCHEMY_DATABASE_URI']
-app.config['SECRET_KEY'] = 'bf054a49ce6d9ba109a091824a0441c9edfc58e4'
-
-app.config['UPLOADED_PHOTOS_DEST'] = os.path.join(basedir, 'uploads')
-
-configure_uploads(app, photos)
-patch_request_class(app)
-
-login_manager = LoginManager(app)
-
-
-from models import db, Users, Tasks, Priorities, Projects, Statuses, AllowedLinks
-
-db.init_app(app)
-migrate = Migrate(app, db)
+main = Blueprint('main', __name__, template_folder='../templates')
+print(__name__, '---')
 
 
 
-@app.before_request
+@main.before_request
 def before_request():
     session.permanent = True
-    app.permanent_session_lifetime = timedelta(hours=1)
+    main.permanent_session_lifetime = timedelta(hours=1)
+    # ALLOWED_LINKS_FOR_USERS = get_allowed_link()
+    # print(ALLOWED_LINKS_FOR_USERS)
 
 
 def get_allowed_link():
@@ -49,49 +35,45 @@ def load_user(user_id):
     return db.session.query(Users).get(user_id)
 
 
-@app.teardown_appcontext
-def close_db(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+# @main.teardown_appcontext
+# def close_db(exception):
+#     db = getattr(g, '_database', None)
+#     if db is not None:
+#         db.close()
 
 
-
-
-@app.route('/')
-@app.route('/home')
+@main.route('/')
+@main.route('/home')
 @login_required
 def home():
-    content = render_template('index.html')
-    res = make_response(content)
-    return res
+    return redirect(url_for('main.get_tasks'))
 
 
-@app.errorhandler(401)
+@main.errorhandler(401)
 def not_uthorized(error):
-    return redirect(url_for("login"))
+    return redirect(url_for("main.login"))
 
 
-@app.errorhandler(404)
+@main.errorhandler(404)
 def not_found_page(error):
     return render_template('404_page.html')
 
 
-@app.route('/login', methods=['POST', 'GET'])
+@main.route('/login', methods=['POST', 'GET'])
 def login():
     if request.method == 'POST':
         user = Users.query.filter_by(email=request.form['email']).first()
         if user and check_password_hash(user.password, request.form['password']):
             userlogin = UserLogin().create(user)
             login_user(userlogin)
-            return redirect(url_for('home'))
+            return redirect(url_for('main.home'))
 
         flash("Incorrect password or email", "error")
 
     return render_template('login.html')
 
 
-@app.route('/projects', methods=['POST', 'GET'])
+@main.route('/projects', methods=['POST', 'GET'])
 @login_required
 def get_project():
     projects = Projects.query.filter(Projects.is_deleted == 0).all()
@@ -106,9 +88,9 @@ def get_project():
     return render_template("template_for_projects_and_users.html", args=args, show_modal=show_modal)
 
 
-@app.route('/users', methods=['POST', 'GET'])
+@main.route('/users', methods=['POST', 'GET'])
 def get_users():
-    users = Users.query.all()
+    users = Users.query.filter(and_(Users.id != current_user.id, Users.is_deleted==0)).all()
     args = {
         "content": users,
         "name_op_page": "users",
@@ -119,9 +101,15 @@ def get_users():
     return render_template("template_for_projects_and_users.html", args=args, show_modal=show_modal)
 
 
-@app.route('/users/add', methods=['POST', 'GET'])
+@main.route('/profile', methods=['POST', 'GET'])
+def get_profile():
+    form = editUser()
+    return render_template('profile.html', form=form,user=current_user)
+
+
+@main.route('/users/add', methods=['POST', 'GET'])
 def add_user():
-    users = Users.query.all()
+    users = Users.query.filter(and_(Users.id != current_user.id, Users.is_deleted==0)).all()
     args = {
         "content": users,
         "name_op_page": "users",
@@ -136,9 +124,10 @@ def add_user():
             try:
                 hash_psw = generate_password_hash(form.password.data, salt_length=8)
                 filename = f"img_{form.first_name.data}_{randint(0, 0xFFFFFFFF)}."
-                file = photos.save(form.photo.data, name=filename)
+                if form.photo.data:
+                    file = photos.save(form.photo.data, name=filename)
 
-                file_url = photos.url(file)
+                    file_url = photos.url(file)
                 db.session.add(Users(first_name=form.first_name.data,
                                      last_name=form.last_name.data,
                                      email=form.email.data,
@@ -146,16 +135,16 @@ def add_user():
                                      photo=file_url))
                 db.session.commit()
                 flash("User created", category="success")
-                return redirect(url_for('get_users'))
+                return redirect(url_for('main.get_users'))
             except Exception as e:
                 flash(f"Have error while creating user <{str(e)}>", category="error")
                 db.session.rollback()
-                return redirect(url_for('get_users'))
+                return redirect(url_for('main.get_users'))
 
     return render_template("template_for_projects_and_users.html", args=args, form=form, show_modal=show_modal)
 
 
-@app.route('/projects/add', methods=['POST', 'GET'])
+@main.route('/projects/add', methods=['POST', 'GET'])
 def add_project():
     projects = Projects.query.filter(Projects.is_deleted == 0).all()
     args = {
@@ -172,42 +161,43 @@ def add_project():
                 db.session.add(Projects(form.name.data.lower(), form.description.data))
                 db.session.commit()
                 flash("Project created", category="success")
-                return redirect(url_for('get_project'))
+                return redirect(url_for('main.get_project'))
             except Exception as e:
                 flash(f"Have error while creating project <{str(e)}>", category="error")
                 db.session.rollback()
-                return redirect(url_for('get_project'))
+                return redirect(url_for('main.get_project'))
 
     return render_template("template_for_projects_and_users.html", args=args, form=form, show_modal=show_modal)
 
 
-@app.route('/users/edit/<int:id>', methods=['POST', 'GET'])
+@main.route('/users/edit/<int:id>', methods=['POST', 'GET'])
 def edit_user(id):
     user = Users.query.get(id)
     return render_template("_detail_user.html", user=user)
 
 
-@app.route('/projects/edit/<int:id>', methods=['POST', 'GET'])
+@main.route('/projects/edit/<int:id>', methods=['POST', 'GET'])
 def edit_project(id):
     project = Projects.query.get(id)
     return render_template("_detail_project.html", project=project)
 
 
-@app.route('/users/delete/<int:id>', methods=['POST', 'GET'])
+@main.route('/users/delete/<int:id>', methods=['POST', 'GET'])
 def delete_user(id):
     user = Users.query.get_or_404(id)
     try:
-        db.session.delete(user)
+        user.email = user.email + "_deleted"
+        user.is_deleted = 1
         db.session.commit()
         flash("User has been deleted", category="success")
     except Exception as e:
         db.session.rollback()
         flash(f"Have error while deleting user <{e}>", category="error")
         db.session.rollback()
-    return redirect(url_for("get_users"))
+    return redirect(url_for("main.get_users"))
 
 
-@app.route('/users/update/<int:id>', methods=['POST', 'GET'])
+@main.route('/users/update/<int:id>', methods=['POST', 'GET'])
 @login_required
 def update_user(id):
     form = editUser(id=id)
@@ -230,7 +220,7 @@ def update_user(id):
                         user.photo = file_url
                     db.session.commit()
                     flash("User updated", category="success")
-                return redirect(url_for('edit_user', id=id))
+                return redirect(url_for('main.edit_user', id=id))
             except Exception as e:
                 flash(f"Have error while updating user <{e}>", category="error")
                 db.session.rollback()
@@ -244,7 +234,7 @@ def update_user(id):
     return render_template("_detail_user.html", form=form, user=user, show_modal=show_modal)
 
 
-@app.route('/projects/update/<int:id>', methods=['POST', 'GET'])
+@main.route('/projects/update/<int:id>', methods=['POST', 'GET'])
 @login_required
 def update_project(id):
     form = AddProject(id=id)
@@ -259,7 +249,7 @@ def update_project(id):
 
                     db.session.commit()
                     flash("Project updated", category="success")
-                return redirect(url_for('edit_project', id=id))
+                return redirect(url_for('.edit_project', id=id))
             except Exception as e:
                 flash(f"Have error while updating project <{e}>", category="error")
                 db.session.rollback()
@@ -272,29 +262,83 @@ def update_project(id):
     return render_template("_detail_project.html", form=form, project=project, show_modal=show_modal)
 
 
-@app.route('/projects/delete/<int:id>', methods=['POST', 'GET'])
+@main.route('/projects/delete/<int:id>', methods=['POST', 'GET'])
 def delete_project(id):
     project = Projects.query.get_or_404(id)
     try:
-        db.session.delete(project)
+        project.name = project.name + '_deleted'
+        project.is_deleted = 1
         db.session.commit()
         flash("Project has been deleted", category="success")
     except Exception as e:
         db.session.rollback()
         flash(f"Have error while deleting project <{e}>", category="error")
         db.session.rollback()
-    return redirect(url_for("get_project"))
+    return redirect(url_for("main.get_project"))
 
 
-@app.route("/logout")
+
+@main.route('/tasks')
+def get_tasks():
+    query = db.session.query(
+        Tasks.name,
+        Tasks.description,
+        Projects.name,
+        Priorities.name,
+        Statuses.name
+
+    )
+    tasks = query.join(Projects).join(Statuses).join(Priorities).order_by(Priorities.id).all()
+    print(tasks)
+    args = {
+        "content": tasks,
+        "name_op_page": "tasks",
+        "titles": ['Name', 'Description', 'Project' , 'Priority', 'Status', ],  # список названия столбцов
+    }
+
+    message_empty = "You have no active tasks"
+    show_modal = None
+    return render_template("show_tasks.html", args=args, show_modal=show_modal)
+
+
+@main.route('/tasks/add', methods=['POST', 'GET'])
+def add_task():
+    form = AddTasks()
+    projects = Projects.query.filter_by(is_deleted=0).all()
+    statuses = Statuses.query.all()
+    priorities = Priorities.query.all()
+    users = Users.query.filter(and_(Users.id != current_user.id,
+                                    Users.is_deleted == 0))
+    form.projects_id.choices = [(project.id, project.name) for project in projects]
+    form.status_id.choices = [(status.id, status.name) for status in statuses]
+    form.priority_id.choices = [(priority.id, priority.name) for priority in priorities]
+    form.user_to_id.choices = [(user.id, f"{user.first_name} {user.last_name}") for user in users]
+
+    if form.validate_on_submit():
+        tasks = Tasks(name=form.name.data,
+                             desc=form.description.data,
+                             project_id=form.projects_id.data,
+                             status_id=form.status_id.data,
+                             priority_id=form.priority_id.data
+        )
+        db.session.add(tasks)
+        db.session.commit()
+        db.session.refresh(tasks)
+
+        db.session.add(TaskUserLink(
+                        task_id=tasks.id,
+                        user_by_id=current_user.id,
+                        user_to_id=form.user_to_id.data
+        ))
+        db.session.commit()
+
+        return redirect(url_for('main.get_tasks'))
+
+    return render_template('add_task.html',form=form)
+
+@main.route("/logout")
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('main.login'))
 
-
-if __name__ == '__main__':
-    app.app_context().push()
-    # db.create_all()
-    app.run(debug=True)
-    # app.run()

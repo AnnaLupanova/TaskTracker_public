@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="section_details_content">
+    {% if user %}
+
+    {% for category,msg in get_flashed_messages(True) %}
+    <div class="flash {{category}}">{{msg}}</div>
+    {% endfor %}
+
+    <div class="content_details">
+        <div class="details_user">
+            <div class="profile_photo">
+
+                {% if user.photo %}
+                    <img class="img_profile" src="{{user.photo}}" alt="">
+                {% else %}
+                    <img class="img_profile" src="{{ url_for('static', filename='images/not_found_icon_profile.png')}}" alt="">
+                {% endif %}
+
+            </div>
+            <div class="info_user">
+                <div class="title_profile">
+                    <p class="title__">First name: </p>
+                    <p class="title__value">{{user.first_name}}</p>
+                </div>
+                <div class="title_profile">
+                    <p class="title__">Last name: </p>
+                    <p class="title__value">{{user.last_name}}</p>
+                </div>
+                <div class="title_profile">
+                    <p class="title__">Email: </p>
+                    <p class="title__value">{{user.email}}</p>
+                </div>
+            </div>
+
+        </div>
+        <div class="buttons_section">
+            <a href="/users/update/{{user.id}}" class="btn ">
+                edit
+            </a>
+            <a class="btn " href="/">Go back</a>
+        </div>
+
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <h4>Are you sure you want to delete "{{user.first_name}}"?</h4>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">NO</button>
+                        <a class="btn delete" href="/users/delete/{{user.id}}">Yes</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if form %}
+        <!-- Modal -->
+        {% if show_modal == True %}
+        <div class="modal fade show" id="exampleModal" tabindex="-1">
+        <!--    <div class="modal fade show" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">-->
+        {% else %}
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            {% endif %}
+
+
+<!--        <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModal" aria-hidden="true">-->
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fs-5">Editing</h5>
+                    </div>
+                    <div class="modal-body">
+
+                        {% from "_formhelpers.html" import render_field %}
+                        <form class="add_form" method="POST" action="/users/update/{{user.id}}" enctype="multipart/form-data">
+                            {{ form.hidden_tag()}}
+
+                            <div class="mb-3">
+                                {{ render_field(form.first_name) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ render_field(form.last_name) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ render_field(form.email) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ render_field(form.password) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ render_field(form.photo) }}
+                            </div>
+                            <div>
+                                {{form.submit(class_="btn btn-primary")}}
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+<!--                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>-->
+                        <a href="/users/edit/{{user.id}}" class="btn" id="closeModal">Close</a>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+
+    </div>
+
+
+    {% endif %}
+
+</div>
+
+
+{% endblock %}

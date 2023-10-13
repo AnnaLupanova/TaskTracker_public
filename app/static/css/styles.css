@@ -309,6 +309,7 @@ nav .nav-link {
 }
 .col_name{
     width: 30%;
+    padding-left: 5px;
 }
 .col_desc{
     width: 60%;
@@ -410,4 +411,16 @@ textarea {
     overflow: auto;
     overflow-wrap: break-word;
     width: 70%;
+}
+.add_task_form{
+    padding: 20px 50px;
+    display: flex;
+    justify-content: space-between;
+}
+.add_task_form .column{
+    width: 45%;
+    padding: 0 20px;
+}
+._project_col{
+    margin-left:10px ;
 }

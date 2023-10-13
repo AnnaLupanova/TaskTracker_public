@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+
+{% block body %}
+
+
+<div class="section_list_content">
+
+    {% for category,msg in get_flashed_messages(True) %}
+    <div class="flash {{category}}">{{msg}}</div>
+    {% endfor %}
+
+    {% if args['content'] %}
+    <div class="title_section">
+        List of {{args['name_op_page']}}
+    </div>
+    <div class="table ">
+
+        <ul class="title_table">
+            {% for title in args['titles'] %}
+            <li class="table_col" style="width: calc(80%/ {{args['titles']|length}}); ">
+                {{title}}
+            </li>
+            {% endfor %}
+            <li class="table_col _edit_col"></li>
+        </ul>
+
+        <div class="tbody">
+            {% for item in args['content'] %}
+            <ul class="row_tbody">
+                {% for fields in args['views_fields'] %}
+                <li title="{{item[fields]}}" class="table_col col_name" style="width: calc(80%/ {{args['titles']|length}}); ">
+                    {{item[fields]}}
+                </li>
+                {% endfor %}
+                <li class="table_col col_edit">
+
+                    <a href="/{{args['name_op_page']}}/edit/{{item.id}}" class="edit_link">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </a>
+
+                </li>
+            </ul>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    {% else %}
+    <div class="title_section">
+        There are no any {{args['name_op_page']}}
+    </div>
+    {% endif %}
+
+
+<!--    <a href="/{{args['name_op_page']}}/add" class="btn add_project">-->
+<!--        Add new {% if args['name_op_page'] == "users" %} user {% else %} project {% endif %}-->
+<!--    </a>-->
+    <a href="/{{args['name_op_page']}}/add" class="btn add_project">
+        Add new {{ args['name_op_page'][:-1] }}
+    </a>
+
+
+    {% if form %}
+    <!-- Modal -->
+    {% if show_modal == True %}
+    <div class="modal fade show" id="exampleModal" tabindex="-1">
+        <!--    <div class="modal fade show" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">-->
+        {% else %}
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            {% endif %}
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fs-5">Addition</h5>
+                    </div>
+                    <div class="modal-body">
+                        {% from "_formhelpers.html" import render_field %}
+                        <form id="add_from" class="add_form" method="POST" action="/{{args['name_op_page']}}/add" enctype="multipart/form-data">
+                            {{ form.hidden_tag()}}
+                            {% for form_field in form._unbound_fields %}
+                            <div class="mb-3">
+                                {{ render_field(form[form_field[0]]) }}
+
+                            </div>
+                            {% endfor%}
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+
+                        <a href="/{{args['name_op_page']}}" class="btn" id="closeModal">Close</a>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+
+    </div>
+
+
+    {% endblock %}
+

@@ -2,13 +2,29 @@ from flask_sqlalchemy import SQLAlchemy
 
 from flask_login import UserMixin
 from datetime import datetime
+from datetime import datetime
 
+today = datetime.today
 db = SQLAlchemy()
 
-association_table = db.Table('association',
-                             db.Column('user_by_id', db.Integer, db.ForeignKey('users.id')),
-                             db.Column('user_to_id', db.Integer, db.ForeignKey('users.id')),
-                             db.Column('task_id', db.ForeignKey('tasks.id')))
+# association_table = db.Table('association',
+#                              db.Column('user_by_id', db.Integer, db.ForeignKey('users.id')),
+#                              db.Column('user_to_id', db.Integer, db.ForeignKey('users.id')),
+#                              db.Column('task_id', db.ForeignKey('tasks.id')))
+
+class TaskUserLink(db.Model):
+    __tablename__ = 'task_user_link'
+    user_by_id = db.Column(db.Integer, db.ForeignKey('users.id'),primary_key=True)
+    user_to_id = db.Column(db.Integer, db.ForeignKey('users.id'),primary_key=True)
+    task_id = db.Column(db.ForeignKey('tasks.id'), primary_key=True)
+
+    def __init__(self,user_by_id, user_to_id, task_id):
+        self.user_by_id = user_by_id
+        self.user_to_id = user_to_id
+        self.task_id = task_id
+
+    def __repr__(self):
+        return f"Task_id={self.task_id}, user_by_id={self.user_by_id}"
 
 
 class Tasks(db.Model, UserMixin):
@@ -23,8 +39,19 @@ class Tasks(db.Model, UserMixin):
     priority_id = db.Column(db.Integer, db.ForeignKey('priorities.id'))
     is_active = db.Column(db.Integer, default=1)
 
+    def __init__(self, name, desc,project_id, status_id, priority_id):
+        self.name = name
+        self.description = desc
+        self.project_id = project_id
+        self.status_id = status_id
+        self.priority_id = priority_id
+        self.created_date = today()
+        self.updated_date = today()
+        self.is_active = 1
+
     def __repr__(self):
-        return '<Task id {}>'.format(self.id)
+        return f'<Task id={self.id}, name={self.name}, prior={self.priority_id},' \
+               f'project_id={self.project_id}, status={self.status_id}>'
 
 
 class Users(db.Model, UserMixin):
@@ -35,15 +62,15 @@ class Users(db.Model, UserMixin):
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
-    users_task = db.relationship("Users", secondary=association_table,
-                                 primaryjoin=(association_table.c.user_by_id == id),
-                                 secondaryjoin=(association_table.c.user_to_id == id),
-                                 backref=db.backref('association', lazy='dynamic'),
+    users_task = db.relationship("Users", secondary='task_user_link',
+                                 primaryjoin=('TaskUserLink.user_by_id==Users.id'),
+                                 secondaryjoin=('TaskUserLink.user_to_id==Users.id'),
+                                 backref=db.backref('task_user_link', lazy='dynamic'),
                                  lazy='dynamic')
-
     allowlinks = db.relationship("AllowedLinks", backref="users")
-
     photo = db.Column(db.String(500), default=None)
+    is_deleted = db.Column(db.Integer, default=0)
+    #tasks = db.relationship('Tasks', secondary='task_user_link')
 
     def __init__(self, first_name, last_name, email, password, photo):
         self.first_name = first_name
@@ -52,6 +79,7 @@ class Users(db.Model, UserMixin):
         self.password = password
         self.photo = photo
         self.role_id = 2
+        self.is_deleted = 0
 
     def __repr__(self):
         return f'User id={self.id}, name={self.first_name}, email={self.email}'

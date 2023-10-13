@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+{% if form %}
+
+{% from "_formhelpers.html" import render_field %}
+<form class="add_task_form" method="POST" action="/tasks/add">
+    {{ form.hidden_tag()}}
+    <div class="column">
+        <div class="mb-3">
+            {{ render_field(form.name) }}
+        </div>
+        <div class="mb-3">
+            {{ render_field(form.description) }}
+        </div>
+    </div>
+    <div class="column">
+        <div class="mb-3">
+            {{ render_field(form.projects_id) }}
+        </div>
+        <div class="mb-3">
+            {{ render_field(form.status_id) }}
+        </div>
+        <div class="mb-3">
+            {{ render_field(form.priority_id) }}
+        </div>
+        <div class="mb-3">
+            {{ render_field(form.user_to_id) }}
+        </div>
+
+    </div>
+
+    <div>
+            {{form.submit(class_="btn btn-primary")}}
+    </div>
+
+</form>
+
+
+{% endif %}
+
+{% endblock %}
