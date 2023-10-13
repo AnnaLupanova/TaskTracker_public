@@ -285,10 +285,10 @@ def get_tasks():
         Tasks.description,
         Projects.name,
         Priorities.name,
-        Statuses.name
-
+        Statuses.name,
     )
-    tasks = query.join(Projects).join(Statuses).join(Priorities).order_by(Priorities.id).all()
+    tasks = query.join(Projects).join(Statuses).join(Priorities)\
+        .join(TaskUserLink).filter(TaskUserLink.user_to_id == current_user.id).order_by(Priorities.id).all()
     print(tasks)
     args = {
         "content": tasks,
@@ -296,7 +296,6 @@ def get_tasks():
         "titles": ['Name', 'Description', 'Project' , 'Priority', 'Status', ],  # список названия столбцов
     }
 
-    message_empty = "You have no active tasks"
     show_modal = None
     return render_template("show_tasks.html", args=args, show_modal=show_modal)
 
